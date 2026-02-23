@@ -1,0 +1,27 @@
+# 海尔 R290 热泵点表示例（需求7：上传后 Modbus 检测到即 MQTT 上报 HA）
+devices:
+  - id: haier_r290_1
+    name: 海尔R290热泵1
+    port: 1
+    path: /dev/ttyS1
+    baud: 9600
+    slave_id: 1
+    registers:
+      - addr: 0
+        name: 出水温度
+        type: uint16
+        scale: 0.1
+        ha_entity: water_temp
+        ha_unit: "°C"
+      - addr: 1
+        name: 回水温度
+        type: uint16
+        scale: 0.1
+        ha_entity: return_temp
+        ha_unit: "°C"
+  # 最多可配置 10 套热泵系统（需求7）
+  # - id: haier_r290_2
+  #   name: 海尔R290热泵2
+  #   port: 2
+  #   path: /dev/ttyS2
+  #   ...
