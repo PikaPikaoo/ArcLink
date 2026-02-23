@@ -1,0 +1,10 @@
+# ArcLink 应用配置示例（需求6：网页可设置）
+http_port: 80
+mqtt_broker: "tcp://192.168.1.100:1883"
+mqtt_user: ""
+mqtt_pass: ""
+mqtt_topic: "arclink/gateway"
+watchdog_dev: "/dev/watchdog"
+mdns_name: "ArcLink"
+config_url: "https://raw.githubusercontent.com/your-repo/arclink-config/main/"
+data_dir: "data"
