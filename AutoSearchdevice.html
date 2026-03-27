@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>设备搜索</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #f7f8fa;
+            color: #1f2937;
+            max-width: 480px;
+            margin: 0 auto;
+            padding: 24px 20px 120px;
+            line-height: 1.5;
+        }
+
+        /* 主卡片：核心区域 */
+        .card-main {
+            background: #fff;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            border-left: 4px solid #2d6cf7;
+        }
+
+        .title-main {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            text-align: center;
+        }
+
+        .status {
+            font-size: 15px;
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: 500;
+        }
+        .status-search { background: #e6f7ff; color: #0958d9; }
+        .status-success { background: #f0fff4; color: #006838; }
+        .status-empty { background: #f5f5f5; color: #595959; }
+        .status-wrap {
+            display: block;
+            text-decoration: none;
+            color: inherit;
+            pointer-events: none;
+        }
+        .status-wrap.active {
+            pointer-events: auto;
+            cursor: pointer;
+        }
+
+        /* 辅助区域：网段设置 */
+        .section-subnet {
+            background: #fff;
+            border-radius: 12px;
+            padding: 16px 20px;
+            font-size: 14px;
+            color: #595959;
+        }
+
+        .subnet-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+            font-weight: 500;
+            color: #444;
+        }
+
+        .subnet-header::before {
+            content: "ⓘ";
+            font-size: 12px;
+            width: 16px;
+            height: 16px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: #e6f7ff;
+            color: #2d6cf7;
+            border-radius: 50%;
+        }
+
+        .subnet-desc {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 6px;
+        }
+
+        .subnet-tip {
+            font-size: 12px;
+            color: #999;
+            margin-bottom: 12px;
+        }
+
+        /* 固定网段展示行 */
+        .fixed-subnet-line {
+            font-size: 13px;
+            color: #2d6cf7;
+            font-weight: 500;
+            margin-bottom: 12px;
+            padding-bottom: 12px;
+            border-bottom: 1px dashed #eee;
+        }
+
+        .ip-inputs {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .ip-inputs input {
+            width: 56px;
+            height: 38px;
+            text-align: center;
+            border: 1px solid #d9d9d9;
+            border-radius: 6px;
+            font-size: 14px;
+            outline: none;
+        }
+        .ip-inputs input.invalid {
+            border-color: #ff4d4f;
+            background: #fff1f0;
+        }
+        .ip-inputs input:focus {
+            border-color: #2d6cf7;
+        }
+
+        /* 更浅的占位符，避免像已输入 */
+        .ip-inputs input::placeholder {
+            color: #d0d0d0;
+            opacity: 1;
+        }
+
+        .dot {
+            font-weight: bold;
+            color: #666;
+        }
+        .suffix {
+            font-size: 13px;
+            color: #999;
+        }
+
+        /* 搜索结果 */
+        .device-item {
+            padding: 16px;
+            text-align: center;
+            font-size: 16px;
+            font-weight: 500;
+        }
+        .device-model {
+            font-size: 14px;
+            color: #595959;
+            margin: 4px 0 12px;
+        }
+        .device-link {
+            display: inline-block;
+            padding: 10px 20px;
+            background: #e6f7ff;
+            color: #2d6cf7;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        /* 底部按钮 */
+        .float-btn {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 220px;
+            height: 56px;
+            border-radius: 28px;
+            background: #2d6cf7;
+            color: #fff;
+            border: none;
+            font-size: 16px;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(45,108,247,0.25);
+            cursor: pointer;
+        }
+        .float-btn:active {
+            background: #1b5bdd;
+        }
+    </style>
+</head>
+
+<body>
+
+<!-- 主区域：设备搜索（核心） -->
+<div class="card-main">
+    <div class="title-main" id="title_main">局域网设备搜索</div>
+    <a id="statusWrap" class="status-wrap" href="javascript:void(0)">
+        <div id="status" class="status status-search">准备就绪</div>
+    </a>
+</div>
+
+<!-- 辅助区域：网段设置 -->
+<div class="section-subnet">
+    <div class="subnet-header">固定搜索网段（必选）</div>
+    <div class="fixed-subnet-line">
+        192.168.1.x、192.168.0.x、192.168.31.x、192.168.2.x、192.168.10.x、192.168.50.x、192.168.68.x、192.168.86.x、192.168.8.x、192.168.100.x、192.168.178.x、10.0.0.x、10.0.1.x、10.1.1.x、172.16.0.x、172.31.0.x
+    </div>
+
+    <div class="subnet-header">手动指定网段（可选）</div>
+    <div class="subnet-desc" id="subnet_desc">输入IP前三段，自动扫描 .2 ~ .254</div>
+    <div class="subnet-tip" id="subnet_tip">网段可参考路由器背面的网关地址</div>
+    <div class="ip-inputs">
+        <input type="number" id="o1" placeholder="192" min="0" max="255" oninput="clearError(this)">
+        <span class="dot">.</span>
+        <input type="number" id="o2" placeholder="168" min="0" max="255" oninput="clearError(this)">
+        <span class="dot">.</span>
+        <input type="number" id="o3" placeholder="31" min="0" max="255" oninput="clearError(this)">
+        <span class="suffix">.xxx</span>
+    </div>
+</div>
+
+<button class="float-btn" id="searchBtn" onclick="startSearch()">搜索设备</button>
+
+<script>
+const PORT = 8265;
+const PATH = "/identify";
+const WEB_PORT = 80;
+const TIMEOUT = 450;
+const CONCURRENCY = 64;
+const MAX_SCAN_MS = 10000;
+
+let isFound = false;
+let isSearching = false;
+let currentLang = 'en';
+let searchRunId = 0;
+const activeControllers = new Set();
+
+const langMap = {
+    'zh':'zh','zh-CN':'zh','en':'en','fr':'fr','de':'de','it':'it','es':'es','pt':'pt',
+    'pl':'pl','ru':'ru','tr':'tr','nl':'nl','el':'el','hu':'hu'
+};
+
+const texts = {
+    zh: {
+        title_main:"局域网设备搜索",
+        subnet_header:"手动指定网段（可选）",
+        subnet_desc:"输入IP前三段，自动扫描 .2 ~ .254",
+        subnet_tip:"网段可参考路由器背面的网关地址",
+        btn:"搜索设备",
+        ready:"准备就绪",
+        searching:"正在搜索设备...",
+        found:"已找到设备：",
+        notFound:"未搜索到设备",
+        invalid:"IP段输入不合法（0-255）",
+        deviceFound:"设备已找到",
+        enterDevice:"进入设备管理"
+    },
+    en: {
+        title_main:"Local Device Search",
+        subnet_header:"Manual Subnet (Optional)",
+        subnet_desc:"Enter first 3 parts of IP, scan .2 ~ .254",
+        subnet_tip:"Subnet can refer to gateway on router label",
+        btn:"Search Devices",
+        ready:"Ready",
+        searching:"Searching devices...",
+        found:"Device found:",
+        notFound:"No device found",
+        invalid:"Invalid IP segment (0-255)",
+        deviceFound:"Device Found",
+        enterDevice:"Go to Device"
+    }
+};
+
+function detectLang(){
+    const lang = navigator.language || 'en';
+    currentLang = langMap[lang] || 'en';
+}
+
+function t(k){
+    return texts[currentLang][k] || texts.en[k];
+}
+
+function applyLang(){
+    detectLang();
+    document.getElementById('title_main').innerText = t('title_main');
+    document.getElementById('subnet_desc').innerText = t('subnet_desc');
+    document.getElementById('subnet_tip').innerText = t('subnet_tip');
+    document.getElementById('searchBtn').innerText = t('btn');
+    document.getElementById('status').innerText = t('ready');
+    document.title = currentLang === 'zh' ? '设备搜索' : 'Device Search';
+}
+
+applyLang();
+
+const commonSubnets = [
+    // prioritized home-router defaults (global)
+    "192.168.1.","192.168.0.","192.168.31.","192.168.2.","192.168.10.",
+    "192.168.50.","192.168.68.","192.168.86.","192.168.8.","192.168.100.","192.168.178.",
+    "10.0.0.","10.0.1.","10.1.1.",
+    "172.16.0.","172.31.0."
+];
+
+function clearError(el){ el.classList.remove("invalid"); }
+
+function validateIPPart(){
+    const o1 = document.getElementById("o1");
+    const o2 = document.getElementById("o2");
+    const o3 = document.getElementById("o3");
+    let valid = true;
+    [o1,o2,o3].forEach(i=>{
+        let v = i.value.trim();
+        if(v!=="" && (Number(v)<0||Number(v)>255)){ i.classList.add("invalid"); valid=false; }
+    });
+    const hasAny = o1.value||o2.value||o3.value;
+    const hasAll = o1.value&&o2.value&&o3.value;
+    if(hasAny && !hasAll){
+        if(!o1.value) o1.classList.add("invalid");
+        if(!o2.value) o2.classList.add("invalid");
+        if(!o3.value) o3.classList.add("invalid");
+        valid = false;
+    }
+    return valid;
+}
+
+function getCustomSubnet(){
+    const o1=document.getElementById("o1").value.trim();
+    const o2=document.getElementById("o2").value.trim();
+    const o3=document.getElementById("o3").value.trim();
+    return o1&&o2&&o3 ? `${o1}.${o2}.${o3}.` : null;
+}
+
+function buildHostList(lastIP){
+    const first = [];
+    const m = /^(\d+)\.(\d+)\.(\d+)\.(\d+)$/.exec(lastIP || "");
+    if (m) first.push(Number(m[4]));
+    first.push(48,100,120,123,150,200,230,254);
+    const out = [];
+    const seen = new Set();
+    const push = (n)=>{ if(n>=2 && n<=254 && !seen.has(n)){ seen.add(n); out.push(n); } };
+    first.forEach(push);
+    for(let i=2;i<=180;i++) push(i); // fast range within 10s budget
+    return out;
+}
+
+function cancelActiveSearch(){
+    for (const c of activeControllers) {
+        try { c.abort(); } catch(_) {}
+    }
+    activeControllers.clear();
+}
+
+async function probeOne(ip, runId){
+    if (runId !== searchRunId) return null;
+    const url = `http://${ip}:${PORT}${PATH}`;
+    const controller = new AbortController();
+    activeControllers.add(controller);
+    const timer = setTimeout(()=>controller.abort(), TIMEOUT);
+    try{
+        const r = await fetch(url, { mode:'cors', cache:'no-store', signal:controller.signal });
+        if (runId !== searchRunId) return null;
+        const data = await r.json();
+        if(data && data.mark==="my-device"){
+            return { ip: data.ip || ip, model: data.model || "Unknown" };
+        }
+    }catch(_){}
+    finally{
+        clearTimeout(timer);
+        activeControllers.delete(controller);
+    }
+    return null;
+}
+
+async function startSearch(){
+    if(isSearching){
+        cancelActiveSearch(); // stop previous run immediately
+    }
+    const runId = ++searchRunId;
+    isSearching = true;
+    isFound = false;
+    clearFoundLink();
+
+    if(!validateIPPart()){
+        setStatus(t('invalid'), 'empty');
+        isSearching = false;
+        return;
+    }
+
+    const custom = getCustomSubnet();
+    const scanList = [...new Set([custom, ...commonSubnets].filter(Boolean))];
+    setStatus(t('searching'), 'search');
+    const deadline = Date.now() + MAX_SCAN_MS;
+    const stopTimer = setTimeout(cancelActiveSearch, MAX_SCAN_MS);
+    const lastIP = localStorage.getItem("last_found_ip");
+    const hosts = buildHostList(lastIP);
+
+    // 先探测上次成功的 IP，命中率最高
+    if (lastIP) {
+        if (Date.now() > deadline) {
+            cancelActiveSearch();
+            if (runId === searchRunId) {
+                setStatus(t('notFound'), 'empty');
+                isSearching = false;
+            }
+            return;
+        }
+        const hit = await probeOne(lastIP, runId);
+        if (runId !== searchRunId) return;
+        if (hit) {
+            isFound = true;
+            showDevice(hit.ip, hit.model);
+            isSearching = false;
+            return;
+        }
+    }
+
+    // 极速单轮扫描：到 10s 立即停止，未发请求直接跳过
+    for (const net of scanList) {
+        for (let i = 0; i < hosts.length && !isFound; i += CONCURRENCY) {
+            if (runId !== searchRunId) { clearTimeout(stopTimer); return; }
+            if (Date.now() > deadline) break;
+            const batch = [];
+            for (let j = 0; j < CONCURRENCY && (i + j) < hosts.length; j++) {
+                const ip = net + hosts[i + j];
+                batch.push(
+                    probeOne(ip, runId).then(hit=>{
+                        if(runId === searchRunId && !isFound && hit){
+                            isFound = true;
+                            showDevice(hit.ip, hit.model);
+                        }
+                    })
+                );
+            }
+            await Promise.allSettled(batch);
+        }
+        if (isFound || Date.now() > deadline) break;
+    }
+
+    clearTimeout(stopTimer);
+    if (runId !== searchRunId) return;
+    if (!isFound && Date.now() > deadline) {
+        cancelActiveSearch();
+    }
+    if(!isFound) setStatus(t('notFound'), 'empty');
+    isSearching = false;
+}
+
+function showDevice(ip, model){
+    setStatus(`${t('found')} ${ip} | ${model}`, 'success');
+    const wrap = document.getElementById('statusWrap');
+    const target = `http://${ip}:${WEB_PORT}/config`;
+    try { localStorage.setItem("last_found_ip", ip); } catch(_){}
+    wrap.href = target;
+    wrap.classList.add('active');
+}
+
+function setStatus(text, type){
+    const el = document.getElementById('status');
+    el.textContent = text;
+    el.className = `status status-${type}`;
+}
+
+function clearFoundLink(){
+    const wrap = document.getElementById('statusWrap');
+    wrap.href = "javascript:void(0)";
+    wrap.classList.remove('active');
+}
+</script>
+</body>
+</html>
