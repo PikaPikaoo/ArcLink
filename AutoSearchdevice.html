@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache,no-store,must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=5,viewport-fit=cover">
+<meta name="theme-color" content="#f7f8fa">
+<title>设备搜索</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-font-smoothing:antialiased}
+body{font-family:system-ui,-apple-system,BlinkMacSystem,Roboto,sans-serif;background:#f7f8fa;color:#1f2337;max-width:480px;margin:0 auto;padding:24px 20px 120px;line-height:1.5}
+
+.card-main{background:#fff;border-radius:12px;padding:24px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,.06);border-left:4px solid #2d6cf7}
+.title-main{font-size:18px;font-weight:600;margin-bottom:12px;text-align:center}
+
+.status{font-size:15px;padding:10px;border-radius:8px;text-align:center;font-weight:500;line-height:1.45}
+.status-search{background:#e6f7ff;color:#0958d9}
+.status-success{background:#f0fff4;color:#006838}
+.status-empty{background:#f5f5f5;color:#595959}
+.status-success.status-go{cursor:pointer;-webkit-tap-highlight-color:transparent}
+.status-hint{display:block;font-size:13px;font-weight:400;opacity:0.92;margin-top:6px}
+.status-loading{display:flex;align-items:center;justify-content:center;gap:10px;text-align:left}
+.status-spin{flex-shrink:0;width:18px;height:18px;border:2px solid rgba(9,88,217,.25);border-top-color:#0958d9;border-radius:50%;animation:statusSpin .7s linear infinite}
+.status-empty .status-spin{border-color:rgba(89,89,89,.25);border-top-color:#595959}
+.status-txt{flex:1;min-width:0}
+@keyframes statusSpin{to{transform:rotate(360deg)}}
+
+.card-guide{
+  background:#fff;
+  border-radius:12px;
+  padding:12px 14px 10px;
+  margin-bottom:16px;
+  box-shadow:0 2px 8px rgba(0,0,0,.06);
+}
+.guide-title{
+  font-weight:600;
+  margin-bottom:6px;
+  color:#2d6cf7;
+  text-align:center;
+  line-height:1.35;
+}
+.guide-diagram{
+  display:block;
+  width:100%;
+  height:auto;
+  aspect-ratio:800/298;
+  margin:2px 0 0;
+  overflow:visible;
+}
+
+.section-subnet{background:#fff;border-radius:12px;padding:16px 20px;font-size:14px;color:#595959;margin-bottom:16px}
+.subnet-header{display:flex;align-items:center;gap:8px;margin-bottom:12px;font-weight:500;color:#444;line-height:1.4}
+.subnet-header::before{content:"ⓘ";font-size:12px;width:16px;height:16px;display:flex;align-items:center;justify-content:center;background:#e6f7ff;color:#2d6cf7;border-radius:50%}
+
+.fixed-subnet-line{font-size:13px;color:#2d6cf7;font-weight:500;white-space:normal;line-height:1.5;margin-bottom:16px;text-align:left}
+
+.ip-inputs{display:flex;align-items:center;justify-content:center;gap:6px;padding:16px 0}
+.ip-inputs input{width:64px;height:42px;text-align:center;border:1px solid #d9d9d9;border-radius:8px;font-size:14px;outline:none}
+.ip-inputs input.invalid{border-color:#ff4d4f!important;background:#fff1f1!important}
+
+.float-btn{position:fixed;bottom:calc(24px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);width:220px;max-width:calc(100vw - 40px);min-height:48px;height:56px;border-radius:28px;background:#2d6cf7;color:#fff;border:none;font-size:16px;z-index:100;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.float-btn:focus-visible{outline:2px solid #2d6cf7;outline-offset:3px}
+.float-btn:disabled{opacity:.55;cursor:not-allowed}
+@media (prefers-reduced-motion:reduce){
+  .status-spin{animation-duration:1.4s;border-top-color:rgba(9,88,217,.45)}
+}
+</style>
+</head>
+<body>
+
+<main id="main">
+<div class="card-main">
+  <div class="title-main" data-i18n="deviceSearch">设备搜索</div>
+  <div id="status_label" class="status status-search" role="status" aria-live="polite" aria-atomic="true" data-i18n="ready">准备就绪</div>
+</div>
+
+<div class="section-subnet">
+  <div class="subnet-header" data-i18n="fixedSearchSubnets">固定搜索网段</div>
+  <div class="fixed-subnet-line" data-i18n="fixedSubnetList">192.168.0.x、192.168.1.x、192.168.2.x、192.168.3.x、192.168.4.x、192.168.5.x、192.168.6.x、192.168.8.x、192.168.9.x、192.168.10.x、192.168.11.x、192.168.15.x、192.168.16.x、192.168.18.x、192.168.31.x、192.168.100.x、192.168.123.x、192.168.177.x、192.168.178.x、10.0.0.x、10.0.1.x、172.16.0.x、172.16.1.x、172.16.2.x</div>
+  
+  <div class="subnet-header" id="manualSubnetLabel" data-i18n="manualSubnet">手动指定网段（可选）</div>
+  <div class="ip-inputs" role="group" aria-labelledby="manualSubnetLabel">
+    <input type="text" inputmode="numeric" pattern="[0-9]*" id="o1" minlength="1" maxlength="3" autocomplete="off" autocorrect="off" spellcheck="false" aria-label="IP first octet" data-i18n-aria="ipOctet1" oninput="filterOctet(this);autoTab(this,'o2');clearInvalid()">
+    <span aria-hidden="true">.</span>
+    <input type="text" inputmode="numeric" pattern="[0-9]*" id="o2" minlength="1" maxlength="3" autocomplete="off" autocorrect="off" spellcheck="false" aria-label="IP second octet" data-i18n-aria="ipOctet2" oninput="filterOctet(this);autoTab(this,'o3');clearInvalid()">
+    <span aria-hidden="true">.</span>
+    <input type="text" inputmode="numeric" pattern="[0-9]*" id="o3" minlength="1" maxlength="3" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="done" aria-label="IP third octet" data-i18n-aria="ipOctet3" oninput="filterOctet(this);clearInvalid()">
+    <span data-i18n="ipOctetPlaceholder">.xxx</span>
+  </div>
+</div>
+
+<div class="card-guide">
+  <div class="guide-title" data-i18n="networkGuideTitle">请确保手机与设备在同一局域网</div>
+
+  <svg class="guide-diagram" viewBox="0 0 800 298" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+    <defs>
+      <style><![CDATA[
+        .dg-stroke{stroke:#000;stroke-width:2;fill:#fff;stroke-linejoin:round;stroke-linecap:round}
+        .dg-wire{stroke:#000;stroke-width:2;fill:none;stroke-linejoin:round;stroke-linecap:round}
+        .dg-txt{font-family:system-ui,-apple-system,BlinkMacSystem,sans-serif}
+        .dg-cap{stroke:#fff;stroke-width:5;paint-order:stroke fill;stroke-linejoin:round}
+      ]]></style>
+    </defs>
+
+    <g transform="translate(0,26)">
+    <path class="dg-wire" d="M 175 32 L 175 22 Q 175 14 184 14 L 332 14 Q 342 14 342 22 L 342 209"/>
+    <path class="dg-wire" d="M 650 62.5 L 650 58 Q 650 54 642 54 L 460 54 Q 452 54 452 58 L 452 209"/>
+
+    <g class="dg-stroke">
+      <path d="M 88 98 L 68 98 Q 56 120.5 68 143 L 88 143 Z"/>
+      <circle cx="74" cy="120.5" r="3" fill="none"/>
+      <path d="M 212 98 L 232 98 Q 244 120.5 232 143 L 212 143 Z"/>
+      <circle cx="226" cy="120.5" r="3" fill="none"/>
+      <rect x="88" y="32" width="124" height="177" rx="5"/>
+      <rect x="95" y="39" width="38" height="17" rx="2" fill="#fff"/>
+      <circle cx="104" cy="47.5" r="2.5" fill="none"/>
+      <circle cx="114" cy="47.5" r="2.5" fill="none"/>
+      <circle cx="124" cy="47.5" r="2.5" fill="none"/>
+      <g stroke-width="1.5">
+        <rect x="93" y="191" width="54" height="10" rx="1"/>
+        <line x1="102" y1="191" x2="102" y2="201"/>
+        <line x1="111" y1="191" x2="111" y2="201"/>
+        <line x1="120" y1="191" x2="120" y2="201"/>
+        <line x1="129" y1="191" x2="129" y2="201"/>
+        <line x1="138" y1="191" x2="138" y2="201"/>
+        <rect x="153" y="191" width="54" height="10" rx="1"/>
+        <line x1="162" y1="191" x2="162" y2="201"/>
+        <line x1="171" y1="191" x2="171" y2="201"/>
+        <line x1="180" y1="191" x2="180" y2="201"/>
+        <line x1="189" y1="191" x2="189" y2="201"/>
+        <line x1="198" y1="191" x2="198" y2="201"/>
+      </g>
+    </g>
+    <text class="dg-txt" x="150" y="132" text-anchor="middle" font-size="20" font-weight="600" fill="#000" data-i18n="deviceText">Arclink</text>
+
+    <rect class="dg-stroke" x="300" y="209" width="200" height="58" rx="4"/>
+    <text class="dg-txt" x="400" y="245" text-anchor="middle" font-size="22" fill="#000" data-i18n="routerText">路由器</text>
+
+    <!-- 手机：与 Arclink 水平中线对齐（中心 y=120.5）；底部圆形 Home -->
+    <g class="dg-stroke">
+      <rect x="618" y="62.5" width="64" height="116" rx="11"/>
+      <rect x="634" y="70.5" width="32" height="4" rx="2" fill="none"/>
+      <circle cx="650" cy="158.5" r="7" fill="#fff"/>
+    </g>
+    <text class="dg-txt" x="650" y="122" text-anchor="middle" font-size="22" fill="#000" data-i18n="phoneText">手机</text>
+    </g>
+
+    <!-- 备注最后绘制、正坐标，避免裁切与线叠字；白描边防止与黑线粘连 -->
+    <text class="dg-txt dg-cap" x="258" y="18" text-anchor="middle" font-size="22" fill="#000" data-i18n="labelCable">网线</text>
+    <text class="dg-txt dg-cap" x="549" y="52" text-anchor="middle" font-size="22" fill="#000" data-i18n="labelWifi">WiFi</text>
+  </svg>
+</div>
+</main>
+
+<button type="button" class="float-btn" id="searchBtn" data-i18n="startSearch">开始搜索</button>
+
+<script>
+const PORT = 8265;
+const PATH = "/identify";
+
+let lastDynStatus=null;
+
+const i18n = {
+  zh: {
+    deviceSearch:"设备搜索",ready:"准备就绪",fixedSearchSubnets:"固定搜索网段",
+    manualSubnet:"手动指定网段（可选）",startSearch:"开始搜索",
+    detectingGateways:"正在探测网关…",scanning:"正在扫描网段…",
+    foundDevice:"已找到设备：",tapToManage:"点击进入管理页面",noDeviceFound:"未搜索到设备",invalidIP:"IP段输入不合法",
+    networkGuideTitle:"请确保手机与设备在同一局域网",
+    deviceText:"Arclink",routerText:"路由器",phoneText:"手机",
+    labelCable:"网线",labelWifi:"WiFi",
+    fixedSubnetList:"192.168.0.x、192.168.1.x、192.168.2.x、192.168.3.x、192.168.4.x、192.168.5.x、192.168.6.x、192.168.8.x、192.168.9.x、192.168.10.x、192.168.11.x、192.168.15.x、192.168.16.x、192.168.18.x、192.168.31.x、192.168.100.x、192.168.123.x、192.168.177.x、192.168.178.x、10.0.0.x、10.0.1.x、172.16.0.x、172.16.1.x、172.16.2.x",
+    ipOctetPlaceholder:".xxx",
+    modelUnknown:"—",
+    ipOctet1:"网段前三位：第 1 段（0–255）",
+    ipOctet2:"网段前三位：第 2 段（0–255）",
+    ipOctet3:"网段前三位：第 3 段（0–255）",
+    searchError:"搜索异常，请稍后重试"
+  },
+  en: {
+    deviceSearch:"Device Search",ready:"Ready",fixedSearchSubnets:"Fixed Subnets",
+    manualSubnet:"Manual Subnet (Optional)",startSearch:"Start Search",
+    detectingGateways:"Probing network…",scanning:"Scanning subnets…",
+    foundDevice:"Device Found: ",tapToManage:"Tap to open management",noDeviceFound:"No Device Found",invalidIP:"Invalid IP",
+    networkGuideTitle:"Please connect to the same LAN as the device",
+    deviceText:"Arclink",routerText:"Router",phoneText:"Phone",
+    labelCable:"Ethernet",labelWifi:"WiFi",
+    fixedSubnetList:"192.168.0.x, 192.168.1.x, 192.168.2.x, 192.168.3.x, 192.168.4.x, 192.168.5.x, 192.168.6.x, 192.168.8.x, 192.168.9.x, 192.168.10.x, 192.168.11.x, 192.168.15.x, 192.168.16.x, 192.168.18.x, 192.168.31.x, 192.168.100.x, 192.168.123.x, 192.168.177.x, 192.168.178.x, 10.0.0.x, 10.0.1.x, 172.16.0.x, 172.16.1.x, 172.16.2.x",
+    ipOctetPlaceholder:".xxx",
+    modelUnknown:"N/A",
+    ipOctet1:"Subnet: first octet (0–255)",
+    ipOctet2:"Subnet: second octet (0–255)",
+    ipOctet3:"Subnet: third octet (0–255)",
+    searchError:"Something went wrong. Please try again."
+  }
+};
+
+function langPack(){
+  const l=(navigator.language||"zh").split("-")[0]||"zh";
+  return{lang:l,dict:i18n[l]||i18n.en};
+}
+
+function applyI18n(){
+  const{lang,dict:d}=langPack();
+  document.documentElement.lang=lang==="zh"?"zh-CN":"en";
+  document.querySelectorAll("[data-i18n]").forEach(e=>{
+    const k=e.dataset.i18n;
+    if(d[k]==null)return;
+    const svgText=e.namespaceURI==="http://www.w3.org/2000/svg"&&e.localName==="text";
+    if(svgText){e.textContent=d[k];return;}
+    if(e.tagName==="BUTTON"){
+      e.textContent=d[k];
+      e.setAttribute("aria-label",d[k]);
+      return;
+    }
+    e.textContent=d[k];
+  });
+  document.querySelectorAll("[data-i18n-aria]").forEach(e=>{
+    const k=e.dataset.i18nAria;
+    if(d[k]==null)return;
+    e.setAttribute("aria-label",d[k]);
+  });
+  document.title=d.deviceSearch;
+}
+
+function filterOctet(el){
+  const v=String(el.value||"").replace(/\D/g,"").slice(0,3);
+  if(el.value!==v)el.value=v;
+}
+function autoTab(cur,next){
+  if(String(cur.value||"").length>=3){
+    const n=document.getElementById(next);
+    if(n)n.focus();
+  }
+}
+function clearInvalid(){
+  document.getElementById("o1").classList.remove("invalid");
+  document.getElementById("o2").classList.remove("invalid");
+  document.getElementById("o3").classList.remove("invalid");
+}
+
+function escapeHtml(s){
+  const n=document.createElement("div");
+  n.textContent=s==null?"":String(s);
+  return n.innerHTML;
+}
+
+function resetStatusClick(){
+  const e=document.getElementById("status_label");
+  if(!e)return;
+  e.onclick=null;
+  e.onkeydown=null;
+  e.removeAttribute("role");
+  e.removeAttribute("tabindex");
+  e.classList.remove("status-go");
+}
+
+function updateStatus(k,t,opts){
+  const{dict:d}=langPack();
+  const e=document.getElementById("status_label");
+  if(!e)return;
+  resetStatusClick();
+  e.setAttribute("role","status");
+  const msg=d[k]||k;
+  const loading=opts&&opts.loading;
+  e.removeAttribute("data-i18n");
+  e.className="status status-"+t+(loading?" status-loading":"");
+  if(loading){
+    e.innerHTML=`<span class="status-spin" aria-hidden="true"></span><span class="status-txt">${escapeHtml(msg)}</span>`;
+    e.setAttribute("aria-busy","true");
+  }else{
+    e.innerHTML="";
+    e.textContent=msg;
+    e.removeAttribute("aria-busy");
+  }
+  lastDynStatus={k,t,loading:!!loading};
+}
+
+const FALLBACK_SUBNET_PREFIXES=[
+  "192.168.1.","192.168.0.","192.168.2.","192.168.3.","10.0.0.","172.16.0."
+];
+
+const GATEWAY_LIST = [
+  "192.168.0.1","192.168.0.2","192.168.0.30","192.168.0.50","192.168.0.100","192.168.0.254",
+  "192.168.1.1","192.168.1.2","192.168.1.250","192.168.1.253","192.168.1.254",
+  "192.168.2.1","192.168.2.254","192.168.3.1","192.168.4.1","192.168.5.1","192.168.6.1",
+  "192.168.8.1","192.168.9.1","192.168.10.1","192.168.10.254","192.168.11.1",
+  "192.168.15.1","192.168.16.1","192.168.18.1","192.168.31.1","192.168.31.254",
+  "192.168.100.1","192.168.100.2","192.168.123.1","192.168.177.1","192.168.178.1",
+  "10.0.0.1","10.0.0.2","10.0.1.1","172.16.0.1","172.16.1.1","172.16.2.1"
+];
+
+let isFound=false;
+let globalAbort=null;
+let activeGatewayProbe=null;
+let activeIdentifyScan=null;
+let currentSearchId=0;
+
+const IPV4_RE=/^(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(?:\.(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}$/;
+
+async function checkGateways(searchId){
+  if(activeGatewayProbe)try{activeGatewayProbe.abort();}catch(_){}
+  const c=new AbortController();
+  activeGatewayProbe=c;
+  const s=new Set();
+  return new Promise(r=>{
+    let settled=false;
+    const done=(arr)=>{
+      if(settled)return;
+      settled=true;
+      if(activeGatewayProbe===c)activeGatewayProbe=null;
+      r(arr);
+    };
+    const ms=2400;
+    setTimeout(()=>{
+      try{c.abort();}catch(_){}
+      setTimeout(()=>{
+        if(searchId!==currentSearchId){
+          done([]);
+          return;
+        }
+        done(Array.from(s));
+      },180);
+    },ms);
+    GATEWAY_LIST.forEach(ip=>{
+      fetch(`http://${ip}`,{signal:c.signal,mode:'no-cors'})
+        .then(()=>{
+          if(searchId!==currentSearchId)return;
+          s.add(ip.split(".").slice(0,3).join(".")+".");
+        })
+        .catch(()=>{});
+    });
+  });
+}
+
+const SCAN_CONCURRENCY=48;
+
+async function scanTargets(list,searchId){
+  if(activeIdentifyScan)try{activeIdentifyScan.abort();}catch(_){}
+  const c=new AbortController();
+  activeIdentifyScan=c;
+  let abortDone=false;
+  const abortScan=()=>{
+    if(abortDone)return;
+    abortDone=true;
+    if(activeIdentifyScan===c)activeIdentifyScan=null;
+    try{c.abort();}catch(_){}
+  };
+  return new Promise(r=>{
+    let resolved=false;
+    let timer=null;
+    let idx=0;
+    let running=0;
+    const finish=()=>{
+      if(resolved)return;
+      resolved=true;
+      if(timer!=null)clearTimeout(timer);
+      abortScan();
+      r();
+    };
+    const tryHit=(ip,data)=>{
+      if(searchId!==currentSearchId||activeIdentifyScan!==c||isFound)return;
+      if(!data||data.mark!=="my-device")return;
+      if(!IPV4_RE.test(String(ip||"")))return;
+      if(resolved)return;
+      if(!showDevice(ip,data,searchId))return;
+      resolved=true;
+      if(timer!=null)clearTimeout(timer);
+      abortScan();
+      r();
+    };
+    const runOne=ip=>{
+      return fetch(`http://${ip}:${PORT}${PATH}`,{signal:c.signal})
+        .then(res=>res.json())
+        .then(data=>{tryHit(ip,data);})
+        .catch(()=>{});
+    };
+    const pump=()=>{
+      if(resolved)return;
+      while(running<SCAN_CONCURRENCY&&idx<list.length){
+        const ip=list[idx++];
+        running++;
+        runOne(ip).finally(()=>{
+          running--;
+          if(resolved)return;
+          pump();
+          if(running===0&&idx>=list.length)finish();
+        });
+      }
+    };
+    timer=setTimeout(()=>{
+      if(searchId!==currentSearchId){finish();return;}
+      finish();
+    },3400);
+    pump();
+  });
+}
+
+function genList(sub){
+  const l=[];
+  sub.forEach(s=>{for(let i=2;i<255;i++)l.push(s+i);});
+  return l;
+}
+
+function getCustom(){
+  const o1=document.getElementById("o1").value.trim();
+  const o2=document.getElementById("o2").value.trim();
+  const o3=document.getElementById("o3").value.trim();
+  return (o1&&o2&&o3)?`${o1}.${o2}.${o3}.`:"";
+}
+
+function validateManualIP(){
+  const o1=document.getElementById("o1");
+  const o2=document.getElementById("o2");
+  const o3=document.getElementById("o3");
+  const v1=o1.value.trim(),v2=o2.value.trim(),v3=o3.value.trim();
+  if(v1||v2||v3){
+    const n1=parseInt(v1),n2=parseInt(v2),n3=parseInt(v3);
+    let valid=true;
+    if(!v1||isNaN(n1)||n1<0||n1>255){o1.classList.add("invalid");valid=false;}
+    if(!v2||isNaN(n2)||n2<0||n2>255){o2.classList.add("invalid");valid=false;}
+    if(!v3||isNaN(n3)||n3<0||n3>255){o3.classList.add("invalid");valid=false;}
+    return valid;
+  }
+  return true;
+}
+
+function showDevice(ip,data,searchId){
+  if(searchId!=null&&searchId!==currentSearchId)return false;
+  if(!IPV4_RE.test(String(ip||"")))return false;
+  if(globalAbort)globalAbort.abort();
+  const{dict:d}=langPack();
+  const model=(data&&data.model!=null&&String(data.model).trim()!=="")?String(data.model).trim():d.modelUnknown;
+  const url=`http://${ip}`;
+  const el=document.getElementById("status_label");
+  if(!el)return false;
+  resetStatusClick();
+  el.removeAttribute("data-i18n");
+  el.className="status status-success status-go";
+  el.innerHTML=`${escapeHtml(d.foundDevice)}${escapeHtml(ip)}|${escapeHtml(model)}<span class="status-hint">${escapeHtml(d.tapToManage)}</span>`;
+  el.setAttribute("role","button");
+  el.setAttribute("tabindex","0");
+  el.onclick=()=>{location.assign(url);};
+  el.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();location.assign(url);}};
+  isFound=true;
+  lastDynStatus=null;
+  return true;
+}
+
+(function(){
+  const searchBtn=document.getElementById("searchBtn")||document.querySelector("button.float-btn");
+  if(!searchBtn)return;
+  searchBtn.addEventListener("click",function(ev){
+    ev.preventDefault();
+    const btn=this;
+    void (async()=>{
+      const searchId=++currentSearchId;
+      btn.setAttribute("aria-busy","true");
+      try{
+        clearInvalid();
+        if(globalAbort)globalAbort.abort();
+        globalAbort=new AbortController();
+        isFound=false;
+
+        if(!validateManualIP()){
+          updateStatus("invalidIP","empty");
+          return;
+        }
+
+        updateStatus("detectingGateways","search",{loading:true});
+        const online=await checkGateways(searchId);
+        if(searchId!==currentSearchId)return;
+
+        const custom=getCustom();
+        let targets=[...online];
+        if(targets.length===0)targets=[...FALLBACK_SUBNET_PREFIXES];
+        if(custom)targets.push(custom);
+        targets=[...new Set(targets)];
+
+        if(targets.length===0){
+          if(searchId!==currentSearchId)return;
+          updateStatus("noDeviceFound","empty");
+          return;
+        }
+
+        updateStatus("scanning","search",{loading:true});
+        await scanTargets(genList(targets),searchId);
+        if(searchId!==currentSearchId)return;
+
+        if(!isFound)updateStatus("noDeviceFound","empty");
+      }catch(_){
+        if(searchId===currentSearchId)updateStatus("searchError","empty");
+      }finally{
+        if(searchId===currentSearchId)btn.removeAttribute("aria-busy");
+      }
+    })();
+  });
+})();
+
+applyI18n();
+window.addEventListener("languagechange",()=>{
+  applyI18n();
+  const el=document.getElementById("status_label");
+  if(!el||el.classList.contains("status-go"))return;
+  if(lastDynStatus)updateStatus(lastDynStatus.k,lastDynStatus.t,{loading:lastDynStatus.loading});
+});
+</script>
+</body>
+</html>
