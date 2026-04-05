@@ -1,0 +1,268 @@
+gateway:
+  device_type: "vrf"
+  brand: "haier"
+  model: "MRV5"
+  modbus:
+    rtu:
+      baudrate: 9600
+      databits: 8
+      parity: "N"
+      stopbits: 1
+      poll_interval_ms: 500
+      max_read_registers: 32
+      max_register_gap: 5
+      write_holding_register_fc: 6
+      write_coil_fc: 5
+entities:
+  - id: 1
+    component: "climate"
+    mqtt_discovery:
+      component: "climate"
+      config:
+        name: "indoor1"
+        unique_id_BC: "indoor1"
+        qos: "1"
+        retain: "true"
+        optimistic: "true"
+        exist_logic:
+          modbus:
+            register_type: "discrete_input"
+            address: "0"
+            data_type: "int16"
+            byte_order: "ABCD"
+            bit_start: ""
+            bit_count: ""
+            scale: ""
+            offset: ""
+            deadband: ""
+            map: "0:false;1:true"
+        icon: "mdi:thermostat"
+        max_temp: "30"
+        min_temp: "16"
+        modes:
+          - "auto"
+          - "off"
+          - "cool"
+          - "heat"
+          - "dry"
+          - "fan_only"
+        payload_off: "OFF"
+        payload_on: "ON"
+        precision: "1.0"
+        temp_step: "1"
+        temperature_unit: "C"
+        mode_command_topic:
+          topic: ""
+          modbus:
+            register_type: "holding_register"
+            address: "1"
+            data_type: "int16"
+            byte_order: "ABCD"
+            bit_start: ""
+            bit_count: ""
+            scale: ""
+            offset: ""
+            deadband: ""
+            map: "0:auto;1:cool;2:heat;3:dry;4:fan_only"
+        mode_state_topic:
+          topic: ""
+          modbus:
+            register_type: "holding_register"
+            address: "1"
+            data_type: "int16"
+            byte_order: "ABCD"
+            bit_start: ""
+            bit_count: ""
+            scale: ""
+            offset: ""
+            deadband: ""
+            map: "0:auto;1:cool;2:heat;3:dry;4:fan_only"
+        temperature_command_topic:
+          topic: ""
+          modbus:
+            register_type: "holding_register"
+            address: "0"
+            data_type: "int16"
+            byte_order: "ABCD"
+            bit_start: ""
+            bit_count: ""
+            scale: ""
+            offset: ""
+            deadband: ""
+            map: ""
+        temperature_state_topic:
+          topic: ""
+          modbus:
+            register_type: "holding_register"
+            address: "0"
+            data_type: "int16"
+            byte_order: "ABCD"
+            bit_start: ""
+            bit_count: ""
+            scale: ""
+            offset: ""
+            deadband: ""
+            map: ""
+        availability: "true"
+        availability_topic:
+          topic: ""
+          modbus:
+            register_type: "discrete_input"
+            address: "1"
+            data_type: "int16"
+            byte_order: "ABCD"
+            bit_start: ""
+            bit_count: ""
+            scale: ""
+            offset: ""
+            deadband: ""
+            map: "0:offline;1:online"
+        availability_mode: "all"
+        payload_available: "online"
+        payload_not_available: "offline"
+        climate_power:
+          modbus:
+            register_type: "coil"
+            address: "0"
+            data_type: "int16"
+            byte_order: "ABCD"
+            bit_start: ""
+            bit_count: ""
+            scale: ""
+            offset: ""
+            deadband: ""
+            map: "0:off;1:on"
+        device:
+          identifiers:
+            - "clc"
+          manufacturer: "haier"
+          model: "vrf"
+          model_id: "MRV5"
+        device_type: "Independent"
+        iid: "_1"
+  - id: 2
+    component: "climate"
+    mqtt_discovery:
+      component: "climate"
+      config:
+        name: "indoor2"
+        unique_id_BC: "indoor2"
+        qos: "1"
+        retain: "true"
+        optimistic: "true"
+        exist_logic:
+          modbus:
+            register_type: "discrete_input"
+            address: "1"
+            data_type: "int16"
+            byte_order: "ABCD"
+            bit_start: ""
+            bit_count: ""
+            scale: ""
+            offset: ""
+            deadband: ""
+            map: "0:false;1:true"
+        icon: "mdi:thermostat"
+        max_temp: "30"
+        min_temp: "16"
+        modes:
+          - "auto"
+          - "off"
+          - "cool"
+          - "heat"
+          - "dry"
+          - "fan_only"
+        payload_off: "OFF"
+        payload_on: "ON"
+        precision: "0.1"
+        temp_step: "0.5"
+        temperature_unit: "C"
+        mode_command_topic:
+          topic: ""
+          modbus:
+            register_type: "holding_register"
+            address: "3"
+            data_type: "int16"
+            byte_order: "ABCD"
+            bit_start: ""
+            bit_count: ""
+            scale: ""
+            offset: ""
+            deadband: ""
+            map: "0:auto;1:cool;2:heat;3:dry;4:fan_only"
+        mode_state_topic:
+          topic: ""
+          modbus:
+            register_type: "holding_register"
+            address: "3"
+            data_type: "int16"
+            byte_order: "ABCD"
+            bit_start: ""
+            bit_count: ""
+            scale: ""
+            offset: ""
+            deadband: ""
+            map: "0:auto;1:cool;2:heat;3:dry;4:fan_only"
+        temperature_command_topic:
+          topic: ""
+          modbus:
+            register_type: "holding_register"
+            address: "2"
+            data_type: "int16"
+            byte_order: "ABCD"
+            bit_start: ""
+            bit_count: ""
+            scale: ""
+            offset: ""
+            deadband: ""
+            map: ""
+        temperature_state_topic:
+          topic: ""
+          modbus:
+            register_type: "holding_register"
+            address: "2"
+            data_type: "int16"
+            byte_order: "ABCD"
+            bit_start: ""
+            bit_count: ""
+            scale: ""
+            offset: ""
+            deadband: ""
+            map: ""
+        availability: "true"
+        availability_topic:
+          topic: ""
+          modbus:
+            register_type: "discrete_input"
+            address: "1"
+            data_type: "int16"
+            byte_order: "ABCD"
+            bit_start: ""
+            bit_count: ""
+            scale: ""
+            offset: ""
+            deadband: ""
+            map: "0:offline;1:online"
+        availability_mode: "all"
+        payload_available: "online"
+        payload_not_available: "offline"
+        climate_power:
+          modbus:
+            register_type: "coil"
+            address: "1"
+            data_type: "int16"
+            byte_order: "ABCD"
+            bit_start: ""
+            bit_count: ""
+            scale: ""
+            offset: ""
+            deadband: ""
+            map: "0:off;1:on"
+        device:
+          identifiers:
+            - "clc"
+          manufacturer: "haier"
+          model: "vrf"
+          model_id: "MRV5"
+        device_type: "Independent"
+        iid: "_2"
